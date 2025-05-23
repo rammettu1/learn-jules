@@ -54,7 +54,40 @@ uv pip install -r requirements.txt
 ```
 `uv` will download and install all the specified packages.
 
-## 5. Ready to Go!
+## 4.a. Hugging Face Authentication (Important for Gemma 3)
+
+The Gemma 3 models are gated, meaning you need to agree to their terms and conditions on the Hugging Face Hub and authenticate your environment to download them.
+
+**1. Accept Model Terms:**
+   - Visit the model page for Gemma 3 (e.g., [google/gemma-3-4b-it](https://huggingface.co/google/gemma-3-4b-it)) or the specific Gemma 3 model you intend to use.
+   - Ensure you are logged into your Hugging Face account.
+   - If prompted, accept the terms and conditions for using the model.
+
+**2. Install Hugging Face CLI:**
+   If you haven't already, install the `huggingface-hub` CLI tool. With your virtual environment (`.venv`) activated:
+   ```bash
+   uv pip install huggingface-hub
+   ```
+
+**3. Log In using Hugging Face CLI:**
+   Authenticate your environment by logging in with your Hugging Face account. You have two main options:
+
+   *   **Interactive Login (Recommended):**
+      ```bash
+      huggingface-cli login
+      ```
+      This will prompt you to enter your Hugging Face token. Follow the instructions. Your token will be saved locally for future use by `transformers` and other Hugging Face libraries.
+
+   *   **Using an Environment Variable (for non-interactive environments):**
+      You can set the `HF_TOKEN` environment variable to your Hugging Face access token (one with at least read permissions).
+      ```bash
+      export HF_TOKEN="your_hugging_face_token_here"
+      ```
+      The scripts will automatically use this environment variable.
+
+After completing these authentication steps, your environment will be able to download the Gemma 3 model.
+
+## 4.b. Ready to Go!
 
 Your environment is now set up. You can proceed to run the project scripts:
 

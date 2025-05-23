@@ -8,7 +8,64 @@ This guide explains how to build and use the Docker container for fine-tuning th
 - **NVIDIA GPU Drivers (for GPU support):** If you plan to use GPUs for fine-tuning, ensure you have the appropriate NVIDIA drivers installed on your host machine. The Docker image includes the CUDA toolkit, but host drivers are necessary.
 - **NVIDIA Container Toolkit:** For GPU access within Docker containers, you need to install the NVIDIA Container Toolkit. Follow the instructions [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
-## 1. Build the Docker Image
+## 1.a. Hugging Face Authentication for Gated Models (e.g., Gemma 3)
+
+The Gemma 3 models are gated on Hugging Face. This means you must:
+1.  **Accept Terms on Hugging Face Hub:** Go to the model's page (e.g., [google/gemma-3-4b-it](https://huggingface.co/google/gemma-3-4b-it)) and ensure you've accepted any terms or agreements. You must be logged into your Hugging Face account.
+2.  **Provide Authentication to Docker:** The Docker container needs access to your Hugging Face credentials to download the gated model. Here are a few ways to manage this:
+
+    *   **Option 1: Log in Interactively Inside the Running Container (Recommended for Security)**
+        After starting your container (e.g., with `docker run -it --rm --gpus all ... bash`):
+        ```bash
+        # Inside the container
+        source .venv/bin/activate 
+        huggingface-cli login
+        ```
+        Follow the prompts to enter your token. The token will be cached within the container (in the `appuser`'s home directory) for the current session and subsequent uses as long as the container persits (if not using `--rm`) or if you commit the container state.
+
+    *   **Option 2: Use Hugging Face Token as an Environment Variable (Secure and Flexible)**
+        You can pass your Hugging Face token as an environment variable when running the container. The `transformers` library will automatically detect and use it.
+        ```bash
+        docker run -it --rm --gpus all \
+            -e HF_TOKEN="your_hugging_face_token_here" \
+            -v /path/to/your/custom_data:/app/data \
+            -v /path/to/your/output_models:/app/gemma3-4b-dpo-finetuned \
+            gemma-finetune bash
+        ```
+        Replace `"your_hugging_face_token_here"` with your actual Hugging Face access token.
+
+    *   **Option 3: Mount Local Hugging Face Cache/Configuration (Advanced)**
+        You can mount your local Hugging Face configuration directory (which contains your token) into the container. The typical location is `~/.cache/huggingface/token` or `~/.huggingface/token`.
+        ```bash
+        # Example for Linux/macOS, token stored at ~/.cache/huggingface/token
+        docker run -it --rm --gpus all \
+            -v ${HOME}/.cache/huggingface:/home/appuser/.cache/huggingface \
+            -v /path/to/your/custom_data:/app/data \
+            -v /path/to/your/output_models:/app/gemma3-4b-dpo-finetuned \
+            gemma-finetune bash
+        ```
+        This makes your local token available inside the container. Ensure the path `/home/appuser/.cache/huggingface` is the correct Hugging Face cache directory for the `appuser` inside the container.
+
+    *   **Option 4: Pass Token as a Build Argument (Least Recommended for Security)**
+        You can pass the token during the `docker build` step and have the `Dockerfile` log in.
+        **Dockerfile change:**
+        ```Dockerfile
+        # ... (other parts of Dockerfile)
+        ARG HF_TOKEN
+        ENV HF_TOKEN=${HF_TOKEN}
+        # Optionally, run login, though env var might be enough
+        # RUN if [ -n "$HF_TOKEN" ]; then . .venv/bin/activate && huggingface-cli login --token $HF_TOKEN; fi
+        # ...
+        ```
+        **Build command:**
+        ```bash
+        docker build --build-arg HF_TOKEN="your_hugging_face_token_here" -t gemma-finetune .
+        ```
+        **Caution:** This method embeds your token into the Docker image layer, which can be a security risk if the image is shared or pushed to a public registry.
+
+Choose the method that best suits your security needs and workflow. For most users, **Option 2 (run-time environment variable)** or **Option 1 (interactive login)** are recommended.
+
+## 1.b. Build the Docker Image
 
 Navigate to the project's root directory (where the `Dockerfile` is located) and run the following command to build the Docker image:
 
